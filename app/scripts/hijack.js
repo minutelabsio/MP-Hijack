@@ -1,13 +1,66 @@
+require.config({
+    baseUrl: 'http://minutephysics.com/hijack',
+    shim: {
+        'buzz': {
+            exports: 'buzz'
+        }
+    },
+    paths: {
+        'buzz': 'vendor/buzz'
+    }
+});
+
 require([
     'require',
 	'modules/bonzo',
-    'modules/shifty'
+    'modules/shifty',
+    'modules/when',
+    'buzz'
 ],
 function(
     req,
 	bonzo,
-    Tween
+    Tween,
+    when,
+    buzz
 ){
+
+    var root = req.toUrl('.')
+        ,waitMsg = loadingOverlay()
+        ,ytLoaded = when.defer()
+        ,soundLoaded = when.defer()
+        ,glassSound = new buzz.sound(root + '/../sounds/glass', {
+                formats: [ "mp3" ],
+                preload: true
+            }).bind('canplaythrough', function(){
+                soundLoaded.resolve();
+            })
+        ;
+
+    function loadingOverlay(){
+
+        var overlay = bonzo(bonzo.create('<div>Loading sheep...</div>'));
+
+        overlay.css({
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            width: 200,
+            'font-size': 25,
+            margin: -100,
+            'text-align': 'center',
+            background: '#fff',
+            padding: 35,
+            'box-shadow': '1px 1px 7px #666',
+            'border-radius': 5,
+            color: '#666',
+            zIndex: 100
+        }).appendTo(document.body);
+
+        return overlay;
+
+    }
+
     function loadYTApi(){
         var tag = document.createElement('script');
         tag.src = "//www.youtube.com/iframe_api";
@@ -60,12 +113,13 @@ function(
 
         var dims = bonzo.viewport()
             ,offset = target.offset()
-            ,w = 100
-            ,h = 100
+            ,w = 250
+            ,h = 90
             ,projectile = bonzo(bonzo.create('<div>')).css({
                 'width': w,
                 'height': h,
-                'background': 'red',
+                'background': 'url('+ req.toUrl('.') +'/../images/sheep-fly.png) no-repeat 0 0',
+                'background-size': '100%',
                 'position': 'absolute',
                 'top': dims.height,
                 'left': dims.width,
@@ -82,8 +136,8 @@ function(
                 left: dims.width
             },
             to: {
-                top: offset.top + offset.height/2 - w/2,
-                left: offset.left + offset.width/2 - h/2
+                top: offset.top + offset.height/2 - h/2,
+                left: offset.left + offset.width/2 - w/4
             },
             duration: 1000,
             step: function(state){
@@ -96,6 +150,7 @@ function(
 
                 projectile.hide();
                 var img = shatterImg( target.parent() );
+                glassSound.play()
                 
                 setTimeout(function(){
                     fallOver( bonzo([target[0], img[0]]), cb );
@@ -170,6 +225,12 @@ function(
     }
 
     window.onYouTubeIframeAPIReady = function(){
+        ytLoaded.resolve();
+    };
+
+    when.all([ytLoaded, soundLoaded]).then(function(){
+
+        waitMsg.hide();
 
         /*
         start
@@ -201,7 +262,7 @@ function(
                 video.css('display', 'none');
             });
         });
-    };
+    });
 
     loadYTApi();
 	
