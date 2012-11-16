@@ -1,5 +1,5 @@
 require.config({
-    baseUrl: 'http://minutephysics.com/hijack',
+    baseUrl: 'http://minutephysics.com/hijack/scripts',
     shim: {
         'buzz': {
             exports: 'buzz'
@@ -30,11 +30,10 @@ function(
         ,ytLoaded = when.defer()
         ,soundLoaded = when.defer()
         ,glassSound = new buzz.sound(root + '/../sounds/glass', {
-                formats: [ "mp3" ],
-                preload: true
-            }).bind('canplaythrough', function(){
+                formats: [ "mp3" ]
+            }).bind('canplaythrough error', function(){
                 soundLoaded.resolve();
-            })
+            }).load()
         ;
 
     function loadingOverlay(){
