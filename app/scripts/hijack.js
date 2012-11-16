@@ -6,6 +6,41 @@ function(
 	bonzo,
     Tween
 ){
+
+    function fallOver( el, callback ){
+
+        var tweenable = new Tween();
+
+        bonzo(el.parent()).css({
+            '-webkit-perspective': 400,
+            '-moz-perspective': 400,
+            '-ms-perspective': 400,
+            'perspective': 400
+        });
+
+        el.css({
+
+            'transform-origin': 'bottom center'
+        });
+
+        tweenable.tween({
+            from: {
+                angle: 0
+            },
+            to: {
+                angle: 90
+            },
+            easing: 'bounce',
+            duration: 1000,
+            step: function(state){
+
+                el.css({
+                    transform: 'rotateX('+state.angle+'deg)'
+                });
+            },
+            callback: callback
+        });
+    }
     
     function breakIt(target, cb){
 
@@ -49,68 +84,32 @@ function(
 
                 projectile.hide();
                 
-                bonzo(target.parent()).css({
-                    '-webkit-perspective': 400,
-                    '-moz-perspective': 400,
-                    '-ms-perspective': 400,
-                    'perspective': 400
-                });
-
-                target.css({
-
-                    'transform-origin': 'bottom center'
-                });
-
-                tweenable.tween({
-                    from: {
-                        angle: 0
-                    },
-                    to: {
-                        angle: 90
-                    },
-                    easing: 'bounce',
-                    duration: 1000,
-                    step: function(state){
-
-                        target.css({
-                            transform: 'rotateX('+state.angle+'deg)'
-                        });
-                    },
-                    callback: cb
-                });
-
-                
+                fallOver( target, cb );                
             }
         });
-
-
     }
 
+    function injectVideo( parent, ytid, callback ){
 
-    var ytid = 'dmX1W5umC1c'
-        ,video = bonzo(document.getElementById('movie_player'))
-        ,mp = bonzo(bonzo.create('<div><iframe width="100%" height="100%" src="http://www.youtube.com/embed/'+ytid+'?autoplay=1" frameborder="0" allowfullscreen></iframe></div>'))
-        ;
+        var injected = bonzo(bonzo.create('<div><iframe id="mp-frame" width="100%" height="100%" src="http://www.youtube.com/embed/'+ytid+'?autoplay=1" frameborder="0" allowfullscreen></iframe></div>'));
 
+        injected.css({
+            width: '100%',
+            height: '100%',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            'transform-origin': 'top center',
+            transform: 'rotateX(-180deg)',
+            zIndex: 0
+        }).appendTo(parent);
 
-    bonzo(video.parent()).css({
-        position: 'relative'
-    });
+        document.getElementById('mp-frame').onload = function(){
+            callback(injected);
+        };
+    }
 
-    mp.css({
-        width: '100%',
-        height: '100%',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        'transform-origin': 'top center',
-        transform: 'rotateX(-180deg)',
-        zIndex: 0
-    }).appendTo(video.parent());
-
-    video.css('zIndex', 2);
-
-    breakIt(video, function(){
+    function swingIn( el ){
 
         var tweenable = new Tween();
         tweenable.tween({
@@ -124,15 +123,34 @@ function(
             duration: 800,
             step: function(state){
 
-                mp.css('transform', 'rotateX('+state.angle+'deg)');
+                el.css('transform', 'rotateX('+state.angle+'deg)');
             }
-        })
+        });
+    }
 
-        var api = window.yt && window.yt.config_['PLAYER_REFERENCE'];
-        api && api.stopVideo();
-        video.css('display', 'none');
+    /*
+    start
+     */
+    var ytid = 'dmX1W5umC1c'
+        ,video = bonzo(document.getElementById('movie_player'))
+        ;
+
+    bonzo(video.parent()).css({
+        position: 'relative'
     });
-	
-	
+
+    video.css('zIndex', 2);
+
+    injectVideo( video.parent(), ytid, function( mp ){
+
+        breakIt(video, function(){
+
+            swingIn( mp );
+
+            var api = window.yt && window.yt.config_['PLAYER_REFERENCE'];
+            api && api.stopVideo();
+            video.css('display', 'none');
+        });
+    });
 	
 });

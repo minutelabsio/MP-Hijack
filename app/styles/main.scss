@@ -1,1 +1,18 @@
 @import "compass_twitter_bootstrap";
+
+#watch7-player {
+    position: relative;
+    overflow: hidden;
+    width: 640px;
+    height: 390px;
+    margin: 3em auto;
+    background: black;
+    color: white;
+    text-align: center;
+}
+#watch7-player embed {
+    position: relative;
+    width: 100%!important;
+    height: 100%!important;
+    background: white;
+}
