@@ -3,9 +3,9 @@
 #watch7-player {
     position: relative;
     overflow: hidden;
-    width: 640px;
-    height: 390px;
-    margin: 3em auto;
+    width: 540px;
+    height: 315px;
+    margin: 1.5em auto;
     background: black;
     color: white;
     text-align: center;
@@ -15,4 +15,10 @@
     width: 100%!important;
     height: 100%!important;
     background: white;
+}
+
+#dumb-video-callout {
+    height: 90px;
+    padding: 5em 0;
+    background: url(../images/arrow.png) no-repeat bottom center;
 }
