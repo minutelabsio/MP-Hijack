@@ -3,7 +3,7 @@
     if(!d.getElementById(id)){
         js=d.createElement(s);
         js.id=id;
-        js.src=dm+'/scripts/mphj.js';
+        js.src=dm+'/scripts/mphj.js?_='+(new Date).getTime();
         bjs[0].parentNode.insertBefore(js,bjs);
     }
 }(document,'script','mp_hijack', 'http://minutephysics.com/hijack');
