@@ -25,16 +25,47 @@ function(
     buzz
 ){
 
-    var root = req.toUrl('.')
-        ,waitMsg = loadingOverlay()
-        ,ytLoaded = when.defer()
-        ,soundLoaded = when.defer()
-        ,glassSound = new buzz.sound(root + '/../sounds/glass', {
-                formats: [ "mp3" ]
-            }).bind('canplaythrough error', function(){
-                soundLoaded.resolve();
-            }).load()
+    var video = bonzo(document.getElementById('movie_player'))
+        ,root = req.toUrl('.')
+        ,glassSound
         ;
+
+    if (!video.length) return;
+
+    function loadResources(){
+
+        var waitMsg = loadingOverlay()
+            ;
+
+        return when.all([
+
+            loadYTApi(), 
+            loadSound(), 
+            loadImages()
+
+        ]).then(function(){
+
+            setTimeout(function(){
+
+                waitMsg.hide();
+
+            }, 1000);
+
+        });
+    }
+
+    function loadSound(){
+
+        var dfd = when.defer();
+
+        glassSound = new buzz.sound(root + '/../sounds/glass', {
+            formats: [ "mp3" ]
+        }).bind('canplaythrough error', function(){
+            dfd.resolve();
+        }).load();
+
+        return dfd;
+    }
 
     function loadImages(){
 
@@ -93,10 +124,22 @@ function(
     }
 
     function loadYTApi(){
-        var tag = document.createElement('script');
+
+        var dfd = when.defer()
+            ,tag = document.createElement('script')
+            ,firstScriptTag = document.getElementsByTagName('script')[0];
+            ;
+
+        if (window.YT) return dfd.resolve();
+
+        window.onYouTubeIframeAPIReady = function(){
+            dfd.resolve();
+        };
+
         tag.src = "//www.youtube.com/iframe_api";
-        var firstScriptTag = document.getElementsByTagName('script')[0];
         firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        return dfd;
     }
 
     function fallOver( el ){
@@ -156,7 +199,7 @@ function(
                 top: offset.top + offset.height/2 - h/2,
                 left: offset.left + offset.width/2 - w/4
             }
-            ,endH = 100
+            ,endH = 200
             ,projectile = bonzo(bonzo.create('<div>')).css({
                 'width': w,
                 'height': h,
@@ -188,13 +231,16 @@ function(
             },
             to: {
                 ang: -360,
-                r: endH
+                r: -500
             },
             easing: 'easeInCubic',
             duration: 5000,
             step: function(state){
+
+                var r = Math.max(endH, state.r);
+
                 projectile.css({
-                    transform: 'rotate('+state.ang+'deg) translate(0px,-'+state.r+'px)'
+                    transform: 'rotate('+state.ang+'deg) translate(0px,-'+r+'px)'
                 });
             },
             callback: function(){
@@ -287,19 +333,12 @@ function(
         return img;
     }
 
-    window.onYouTubeIframeAPIReady = function(){
-        ytLoaded.resolve();
-    };
-
-    when.all([ytLoaded, soundLoaded, loadImages()]).then(function(){
-
-        waitMsg.hide();
+    loadResources().then(function(){
 
         /*
         start
          */
         var ytid = 'dmX1W5umC1c'
-            ,video = bonzo(document.getElementById('movie_player'))
             ,parent = video.parent() //document.getElementById('watch7-video')
             ;
 
@@ -343,7 +382,5 @@ function(
             });
         });
     });
-
-    loadYTApi();
 	
 });

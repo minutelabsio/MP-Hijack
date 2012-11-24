@@ -1,13 +1,15 @@
 require.config({
-  shim: {
-  },
+    shim: {
 
-  paths: {
-    jquery: 'vendor/jquery.min'
-  }
+        'popcorn': {
+            exports: 'Popcorn'
+        }
+    },
+
+    paths: {
+        jquery: 'vendor/jquery.min',
+        popcorn: 'vendor/popcorn'
+    }
 });
  
-require(['app'], function(app) {
-  // use app here
-  console.log(app);
-});
+require(['app']);
