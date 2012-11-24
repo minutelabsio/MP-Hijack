@@ -36,6 +36,38 @@ function(
             }).load()
         ;
 
+    function loadImages(){
+
+        var list = [
+                '/../images/shatter.png',
+                '/../images/sheep-fly.png'
+            ]
+            ,next
+            ,img
+            ,dfds = []
+            ;
+
+        function preload(url){
+            var img = new Image()
+                ,dfd = when.defer()
+                ;
+
+            img.onload = function(){
+                dfd.resolve();
+            };
+            img.src = url;
+
+            return dfd;
+        }
+
+        while (next = list.pop()){
+
+            dfds.push(preload(root+next));
+        }
+
+        return when.all(dfds);
+    }
+
     function loadingOverlay(){
 
         var overlay = bonzo(bonzo.create('<div>Loading sheep...</div>'));
@@ -67,9 +99,10 @@ function(
         firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
 
-    function fallOver( el, callback ){
+    function fallOver( el ){
 
-        var tweenable = new Tween()
+        var dfd = when.defer()
+            ,tweenable = new Tween()
             ;
 
         el = bonzo(el);
@@ -102,65 +135,86 @@ function(
                     transform: 'rotateX('+state.angle+'deg)'
                 });
             },
-            callback: callback
+            callback: function(){
+                dfd.resolve();
+            }
         });
+
+        return dfd;
     }
     
-    function breakIt(target, cb){
+    function breakIt(target){
 
         if (!target.length) return;
 
-        var dims = bonzo.viewport()
+        var dfd = when.defer()
+            ,dims = bonzo.viewport()
             ,offset = target.offset()
             ,w = 250
             ,h = 90
+            ,dest = {
+                top: offset.top + offset.height/2 - h/2,
+                left: offset.left + offset.width/2 - w/4
+            }
+            ,endH = 100
             ,projectile = bonzo(bonzo.create('<div>')).css({
                 'width': w,
                 'height': h,
-                'background': 'url('+ req.toUrl('.') +'/../images/sheep-fly.png) no-repeat 0 0',
+                'background': 'url('+ root +'/../images/sheep-fly.png) no-repeat 0 0',
                 'background-size': '100%',
                 'position': 'absolute',
-                'top': dims.height,
-                'left': dims.width,
+                'top': dest.top+endH,
+                'left': dest.left,
+                'zIndex': 10
+            })
+            ,layer = bonzo(bonzo.create('<div>')).css({
+                overflow: 'hidden',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: bonzo(document.body).dim().height + bonzo(document.body).scrollTop(),
                 'zIndex': 10
             })
             ,tweenable = new Tween()
             ;
         
-        projectile.appendTo(document.body);
+        projectile.appendTo(layer.appendTo(document.body));
 
         tweenable.tween({
             from: {
-                top: dims.height,
-                left: dims.width
+                ang: 90,
+                r: dims.width - dest.left
             },
             to: {
-                top: offset.top + offset.height/2 - h/2,
-                left: offset.left + offset.width/2 - w/4
+                ang: -360,
+                r: endH
             },
-            duration: 1000,
+            easing: 'easeInCubic',
+            duration: 5000,
             step: function(state){
                 projectile.css({
-                    top: state.top,
-                    left: state.left
-                })
+                    transform: 'rotate('+state.ang+'deg) translate(0px,-'+state.r+'px)'
+                });
             },
             callback: function(){
 
-                projectile.hide();
+                layer.hide();
                 var img = shatterImg( target.parent() );
-                glassSound.play()
-                
-                setTimeout(function(){
-                    fallOver( bonzo([target[0], img[0]]), cb );
-                }, 2000);
+                glassSound.play();
+
+                dfd.resolve(bonzo([target[0], img[0]]));
             }
         });
+
+        return dfd;
     }
 
     function injectVideo( parent, ytid, callback ){
 
-        var injected = bonzo(bonzo.create('<div><div id="mp-player"></div></div>'));
+        var dfd = when.defer()
+            ,injected = bonzo(bonzo.create('<div><div id="mp-player"></div></div>'))
+            ;
         
         injected.css({
             width: '100%',
@@ -179,17 +233,22 @@ function(
             videoId: ytid,
             events: {
                 'onReady': function(evt){
-                    callback(injected, evt.target);
+                    dfd.resolve([injected, evt.target]);
                 }
             } 
         });
+
+        return dfd;
     }
 
     function swingIn( el ){
 
         el.css('zIndex', 5);
 
-        var tweenable = new Tween();
+        var dfd = when.defer()
+            ,tweenable = new Tween()
+            ;
+
         tweenable.tween({
             from: {
                 angle: -180
@@ -202,8 +261,13 @@ function(
             step: function(state){
 
                 el.css('transform', 'rotateX('+state.angle+'deg)');
+            },
+            callback: function(){
+                dfd.resolve();
             }
         });
+
+        return dfd;
     }
 
     function shatterImg( par ){
@@ -211,7 +275,7 @@ function(
         var img = bonzo(bonzo.create('<div>'));
         
         img.css({
-            background: 'url('+ req.toUrl('.') +'/../images/shatter.png) no-repeat center center',
+            background: 'url('+ root +'/../images/shatter.png) no-repeat center center',
             width: '100%',
             height: '100%',
             position: 'absolute',
@@ -227,7 +291,7 @@ function(
         ytLoaded.resolve();
     };
 
-    when.all([ytLoaded, soundLoaded]).then(function(){
+    when.all([ytLoaded, soundLoaded, loadImages()]).then(function(){
 
         waitMsg.hide();
 
@@ -246,19 +310,36 @@ function(
 
         video.css('zIndex', 2);
 
-        injectVideo( parent, ytid, function( mp, player ){
+        injectVideo( parent, ytid ).then(function( args ){
 
-            setTimeout(function(){
-                player.playVideo();
-            }, 2000);
+            var mp = args[0]
+                ,player = args[1]
+                ;
 
-            breakIt(video, function(){
+            // start loading
+            player.playVideo();
+            player.pauseVideo();
 
-                swingIn( mp );
+            // break video
+            breakIt(video).then(function( els ){
 
-                var api = window.yt && window.yt.config_['PLAYER_REFERENCE'];
-                api && api.stopVideo();
-                video.css('display', 'none');
+                // wait two seconds
+                setTimeout(function(){
+
+                    // fall over
+                    fallOver( els ).then(function(){
+
+                        // play new video
+                        player.playVideo();
+
+                        // swing it in
+                        swingIn( mp );
+
+                        var api = window.yt && window.yt.config_['PLAYER_REFERENCE'];
+                        api && api.stopVideo();
+                        video.css('display', 'none');
+                    });
+                }, 2000);
             });
         });
     });
