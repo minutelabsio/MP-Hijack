@@ -1,11 +1,16 @@
 @import "compass_twitter_bootstrap";
 
+body {
+    font-size: 100%;
+    line-height: 1.4;
+}
+
 #watch7-player {
     position: relative;
     overflow: hidden;
     width: 540px;
     height: 315px;
-    margin: 1.5em auto;
+    margin: 1.5em 0;
     background: black;
     color: white;
     text-align: center;
@@ -19,6 +24,30 @@
 
 #dumb-video-callout {
     height: 90px;
-    padding: 5em 0;
+    padding: 8em 0;
     background: url(../images/arrow.png) no-repeat bottom center;
+}
+
+#dumb-video-callout p {
+    width: 4em;
+    margin: auto;
+}
+
+.intro {
+    margin: 5em 260px;
+}
+
+.panic-wrap {
+    text-align: center;
+}
+
+.how {
+    margin-top: 6em;
+}
+
+footer {
+    margin-top: 6em;
+    background: #333;
+    color: #fff;
+    padding: 8em 0;
 }
