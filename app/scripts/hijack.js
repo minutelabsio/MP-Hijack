@@ -59,7 +59,7 @@ function(
         var dfd = when.defer();
 
         glassSound = new buzz.sound(root + '/../sounds/glass', {
-            formats: [ "mp3" ]
+            formats: [ 'mp3', 'ogg', 'aac' ]
         }).bind('canplaythrough error', function(){
             dfd.resolve();
         }).load();
