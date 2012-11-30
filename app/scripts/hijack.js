@@ -27,7 +27,7 @@ function(
 
     var video = bonzo(document.getElementById('movie_player'))
         ,root = req.toUrl('.')
-        ,glassSound
+        ,sounds = {}
         ;
 
     if (!video.length) return;
@@ -40,7 +40,7 @@ function(
         return when.all([
 
             loadYTApi(), 
-            loadSound(), 
+            loadSounds(), 
             loadImages()
 
         ]).then(function(){
@@ -54,17 +54,29 @@ function(
         });
     }
 
-    function loadSound(){
+    function loadSounds(){
 
-        var dfd = when.defer();
+        var dfds = []
+            ,names = ['glass', 'aircraft', 'sheep']
+            ;
 
-        glassSound = new buzz.sound(root + '/../sounds/glass', {
-            formats: [ 'mp3', 'ogg', 'aac' ]
-        }).bind('canplaythrough error', function(){
-            dfd.resolve();
-        }).load();
+        for ( var i = 0, l = names.length; i < l; ++i ){
+            
+            !function(name){
+                
+                var dfd = when.defer();
+                
+                sounds[name] = new buzz.sound(root + '/../sounds/'+name, {
+                    formats: [ 'mp3', 'ogg', 'aac' ]
+                }).bind('canplaythrough error', function(){
+                    dfd.resolve();
+                }).load();
 
-        return dfd;
+                dfds.push(dfd);
+            }(names[i]);
+        }
+
+        return when.all(dfds);
     }
 
     function loadImages(){
@@ -199,14 +211,16 @@ function(
                 top: offset.top + offset.height/2 - h/2,
                 left: offset.left + offset.width/2 - w/4
             }
-            ,endH = 200
+            ,endH = 300
+            ,scrolltop = bonzo(document.body).scrollTop()
             ,projectile = bonzo(bonzo.create('<div>')).css({
                 'width': w,
                 'height': h,
+                'transform-origin': '30% 50%',
                 'background': 'url('+ root +'/../images/sheep-fly.png) no-repeat 0 0',
                 'background-size': '100%',
                 'position': 'absolute',
-                'top': dest.top+endH,
+                'top': dest.top,
                 'left': dest.left,
                 'zIndex': 10
             })
@@ -216,40 +230,109 @@ function(
                 top: 0,
                 left: 0,
                 right: 0,
-                height: bonzo(document.body).dim().height + bonzo(document.body).scrollTop(),
+                height: bonzo(document.body).dim().height + scrolltop,
                 'zIndex': 10
             })
             ,tweenable = new Tween()
+            ,from = {
+                top: scrolltop + dims.height - endH,
+                left: dims.width
+            }
+            ,ang = (Math.atan((from.top - dest.top)/(dims.width - dest.left))*180/Math.PI)
             ;
+
+        function finish(){
+            layer.hide();
+            var img = shatterImg( target.parent() );
+            sounds.glass.play();
+
+            dfd.resolve(bonzo([target[0], img[0]]));
+        }
         
         projectile.appendTo(layer.appendTo(document.body));
 
+        // first leg
+        projectile.css('transform', 'rotate('+ang+'deg) translate(0px, '+endH+'px)');
+        
+        sounds.aircraft.setVolume(40).play();
+
         tweenable.tween({
-            from: {
-                ang: 90,
-                r: dims.width - dest.left
-            },
+            from: from,
             to: {
-                ang: -360,
-                r: -500
+                top: dest.top,
+                left: dest.left
             },
-            easing: 'easeInCubic',
-            duration: 5000,
+            easing: 'linear',
+            duration: 1400,
             step: function(state){
 
-                var r = Math.max(endH, state.r);
-
                 projectile.css({
-                    transform: 'rotate('+state.ang+'deg) translate(0px,-'+r+'px)'
+                    top: state.top,
+                    left: state.left
+                    // transform: 'rotate('+state.ang+'deg) translate(0px,-'+r+'px)'
                 });
             },
             callback: function(){
 
-                layer.hide();
-                var img = shatterImg( target.parent() );
-                glassSound.play();
+                var orig = 100
+                    ,startAng = ang
+                    ,dur = 750
+                    ;
 
-                dfd.resolve(bonzo([target[0], img[0]]));
+                tweenable.tween({
+                    from: {
+                        ang: startAng
+                    },
+                    to: {
+                        ang: orig
+                    },
+                    easing: 'linear',
+                    duration: dur,
+                    step: function(state){
+
+                        projectile.css('transform', 'rotate('+state.ang+'deg) translate(0px, '+endH+'px)');
+                    },
+                    callback: function(){
+
+                        var ang = (orig - 90)*Math.PI/180
+                            ,x = -Math.cos(ang)*endH
+                            ,y = -Math.sin(ang)*endH
+                            // projectile motion...
+                            ,w = (orig-startAng)/dur
+                            ,Vox = -w*(Math.PI/180) * endH * Math.sin(ang)
+                            ,t = x/Vox
+                            ,Voy = Vox * Math.tan((Math.PI/2-ang))
+                            ,a = -2*(Voy*t + y)/(t*t)
+                            ;
+
+                        projectile.css('transform', 'translate('+x+'px, '+y+'px) rotate('+orig+'deg)');
+
+                        sounds.sheep.play();
+
+                        tweenable.tween({
+                            from: {
+                                x: x
+                            },
+                            to: {
+                                x: 0
+                            },
+                            easing: 'linear',
+                            duration: t,
+                            step: function(state){
+
+                                var time = (x-state.x)/Vox
+                                    ,ypos = 0.5*a*time*time + Voy*time + y
+                                    ,ang = w*time + orig
+                                    ;
+
+                                projectile.css('transform', 'translate('+state.x+'px, '+ypos+'px) rotate('+ang+'deg)');
+                            },
+                            callback: function(){
+                                finish();
+                            }
+                        });
+                    }
+                });
             }
         });
 

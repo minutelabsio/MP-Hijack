@@ -47,6 +47,9 @@ define([
                     'onReady': function(evt){
                         // fake youtube page data
                         window.yt.config_['PLAYER_REFERENCE'] = evt.target;
+
+                        // debug
+                        // require(['hijack']);
                     }
                 } 
             });
